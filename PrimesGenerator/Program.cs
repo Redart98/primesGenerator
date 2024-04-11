@@ -14,17 +14,24 @@ var options = new JsonSerializerOptions { Converters = { new NoTimezoneConverter
 var consumerConfig = new ConsumerConfig { BootstrapServers = bootstrapServers, GroupId = "PrimesGenerator" };
 using var consumer = new ConsumerBuilder<string, string>(consumerConfig).Build();
 var topicPartition = new TopicPartition(topicName, new Partition(0));
-var watermarkOffsets
-    = consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(10));
-if (watermarkOffsets.High.Value != watermarkOffsets.Low.Value)
+try
 {
-    var tpo = new TopicPartitionOffset(topicPartition, new Offset(watermarkOffsets.High.Value - 1));
-    consumer.Assign(tpo);
-    var consumeResult = consumer.Consume(TimeSpan.FromSeconds(10));
-    if (consumeResult?.Message != null)
+    var watermarkOffsets
+        = consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(10));
+    if (watermarkOffsets.High.Value != watermarkOffsets.Low.Value)
     {
-        initialPrime = JsonSerializer.Deserialize<PrimeDto>(consumeResult.Message.Value, options)!.Number;
+        var tpo = new TopicPartitionOffset(topicPartition, new Offset(watermarkOffsets.High.Value - 1));
+        consumer.Assign(tpo);
+        var consumeResult = consumer.Consume(TimeSpan.FromSeconds(10));
+        if (consumeResult?.Message != null)
+        {
+            initialPrime = JsonSerializer.Deserialize<PrimeDto>(consumeResult.Message.Value, options)!.Number;
+        }
     }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to read last known prime, startig over. {ex}");
 }
 
 var generator = new PrimesGenerator.PrimesGenerator(initialPrime);
@@ -36,22 +43,25 @@ using var hiresTimer = new HiresTimer();
 
 try
 {
-    for(int i = 0; i < 20;  i++)
+    while (true)
     {
-        var next = generator.GetNext();
-        producer.Produce(topicName, new Message<string, string>
+        for (int i = 0; i < 20; i++)
         {
-            Value = JsonSerializer.Serialize(new PrimeDto(next, DateTime.Now), options)
-        });
-        Console.WriteLine($"Prime: {next}");
-        var timestamp = Stopwatch.GetTimestamp();
-        var delay = next % 17;
-        hiresTimer.Wait(TimeSpan.FromMilliseconds((int)delay));
-        Console.WriteLine($"{Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds}ms elapsed");
+            var next = generator.GetNext();
+            producer.Produce(topicName, new Message<string, string>
+            {
+                Value = JsonSerializer.Serialize(new PrimeDto(next, DateTime.Now), options)
+            });
+            Console.WriteLine($"Prime: {next}");
+            var timestamp = Stopwatch.GetTimestamp();
+            var delay = next % 17;
+            hiresTimer.Wait(TimeSpan.FromMilliseconds((int)delay));
+            Console.WriteLine($"{Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds}ms elapsed, expected {delay}ms");
+        }
+        var now = DateTime.UtcNow;
+        Thread.Sleep(TimeSpan.FromSeconds(1) - TimeSpan.FromTicks(now.Ticks % TimeSpan.TicksPerSecond));
+        Console.WriteLine($"{now} - {DateTime.UtcNow}");
     }
-    var now = DateTime.UtcNow;
-    Thread.Sleep(TimeSpan.FromSeconds(1) - TimeSpan.FromTicks(now.Ticks % TimeSpan.TicksPerSecond));
-    Console.WriteLine($"{now} - {DateTime.UtcNow}");
 }
 finally
 {

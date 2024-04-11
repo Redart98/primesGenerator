@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: PrimesGenerator/Dockerfile
+    depends_on:
+      - kafka
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
@@ -32,6 +34,8 @@ services:
     build: 
       context: .
       dockerfile: ClickHouse/Dockerfile
+    depends_on:
+      - kafka
     hostname: clickhouse
     container_name: clickhouse
     ports:
