@@ -32,8 +32,8 @@ services:
 
   clickhouse:
     build: 
-      context: .
-      dockerfile: ClickHouse/Dockerfile
+      context: ./ClickHouse
+      dockerfile: Dockerfile
     depends_on:
       - kafka
     hostname: clickhouse

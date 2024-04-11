@@ -10,7 +10,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Clickhouse", "Clickhouse", "{5CCEB532-2589-4575-A034-6B109DACEC06}"
 	ProjectSection(SolutionItems) = preProject
 		ClickHouse\Dockerfile = ClickHouse\Dockerfile
-		init.sql = init.sql
+		ClickHouse\init.sql = ClickHouse\init.sql
 	EndProjectSection
 EndProject
 Global
