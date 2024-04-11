@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PrimesGenerator": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
